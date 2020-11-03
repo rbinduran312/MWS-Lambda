@@ -1,0 +1,118 @@
+###########SCAN request_state##############
+var params = {
+    TableName: 'request_state',
+    Select: 'ALL_ATTRIBUTES', // optional (ALL_ATTRIBUTES | ALL_PROJECTED_ATTRIBUTES |
+                              //           SPECIFIC_ATTRIBUTES | COUNT)
+    ReturnConsumedCapacity: 'TOTAL', // optional (NONE | TOTAL | INDEXES)
+};
+dynamodb.scan(params, function(err, data) {
+    if (err) ppJson(err); // an error occurred
+    else ppJson(data); // successful response
+});
+
+########## DELETE TABLE ############
+var params = {
+    TableName: 'mws_reports',
+};
+dynamodb.deleteTable(params, function(err, data) {
+    if (err) ppJson(err); // an error occurred
+    else ppJson(data); // successful response
+});
+
+######### CREATE TABLE ############
+var params = {
+    TableName: 'mws_reports',
+    KeySchema: [ // The type of of schema.  Must start with a HASH type, with an optional second RANGE.
+        {
+            'AttributeName': 'request_id',
+            'KeyType': 'HASH'
+        },
+    ],
+    AttributeDefinitions: [ // The names and types of all primary and index key attributes only
+        {
+            AttributeName: 'request_id',
+            AttributeType: 'S', // (S | N | B) for string, number, binary
+        },
+        {
+            AttributeName: 'pair_id',
+            AttributeType: 'S', // (S | N | B) for string, number, binary
+        },
+        {
+            AttributeName: 'end_date',
+            AttributeType: 'S', // (S | N | B) for string, number, binary
+        },
+        // ... more attributes ...
+    ],
+    ProvisionedThroughput: { // required provisioned throughput for the table
+        ReadCapacityUnits: 10,
+        WriteCapacityUnits: 10,
+    },
+    GlobalSecondaryIndexes: [ // optional (list of GlobalSecondaryIndex)
+        {
+            IndexName: 'pair_id-index',
+            KeySchema: [
+                { // Required HASH type attribute
+                    AttributeName: 'pair_id',
+                    KeyType: 'HASH',
+                },
+                { // Optional RANGE key type for HASH + RANGE secondary indexes
+                    AttributeName: "end_date",
+                    KeyType: 'RANGE',
+                }
+            ],
+            Projection: { // attributes to project into the index
+                ProjectionType: 'ALL', // (ALL | KEYS_ONLY | INCLUDE)
+            },
+            ProvisionedThroughput: { // throughput to provision to the index
+                ReadCapacityUnits: 10,
+                WriteCapacityUnits: 10,
+            },
+        },
+        // ... more global secondary indexes ...
+    ],
+};
+dynamodb.createTable(params, function(err, data) {
+    if (err) ppJson(err); // an error occurred
+    else ppJson(data); // successful response
+
+});
+
+
+############ QUERY to check last request report
+var params = {
+    TableName: 'request_state',
+    IndexName: 'merchant_id-index', // optional (if querying an index)
+    KeyConditionExpression: 'merchant_id = :merchant', // a string representing a constraint on the attribute,
+    FilterExpression: 'done = :doneval', // a string representing a constraint on the attribute
+    ExpressionAttributeValues: {
+        ":merchant": "A3NT34NG7Z0NCP",
+        ":doneval": "0",
+    },
+    ScanIndexForward: false, // optional (true | false) defines direction of Query in the index
+};
+docClient.query(params, function(err, data) {
+    if (err) ppJson(err); // an error occurred
+    else ppJson(data); // successful response
+});
+
+
+####### UPDATE ITEM ##########
+var params = {
+    TableName: 'request_state',
+    Key: { // The primary key of the item (a map of attribute name to AttributeValue)
+        "request_id": "592342018483", //(string | number | boolean | null | Binary)
+        // more attributes...
+    },
+    UpdateExpression: 'SET done= :value', // String representation of the update to an attribute
+    ExpressionAttributeValues:{
+        ":value":"_DONE_",
+    },
+    ReturnValues: 'UPDATED_NEW', // optional (NONE | ALL_OLD | UPDATED_OLD | ALL_NEW | UPDATED_NEW)
+};
+docClient.update(params, function(err, data) {
+    if (err) ppJson(err); // an error occurred
+    else ppJson(data); // successful response
+});
+
+
+##java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb
